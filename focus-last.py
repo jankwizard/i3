@@ -75,6 +75,7 @@ class FocusWatcher:
 
         def read(conn):
             data = conn.recv(1024)
+            print(data)
             if data == b'switch':
                 with self.window_list_lock:
                     tree = self.i3.get_tree()
@@ -86,6 +87,21 @@ class FocusWatcher:
                             self.i3.command('[con_id=%s] focus' % window_id)
                             subprocess.call("xrefresh", shell=True)
                             break
+            elif data:
+                if self.workspace.startswith(data.decode()):
+                    with self.window_list_lock:
+                        tree = self.i3.get_tree()
+                        windows = set(w.id for w in tree.leaves())
+                        for window_id in self.window_list[1:]:
+                            if window_id not in windows:
+                                self.window_list.remove(window_id)
+                            else:
+                                self.i3.command('[con_id=%s] focus' % window_id)
+                                subprocess.call("xrefresh", shell=True)
+                                break
+                else:
+                    self.i3.command('workspace number ' + data.decode())
+                pass
             elif not data:
                 selector.unregister(conn)
                 conn.close()
@@ -119,13 +135,24 @@ if __name__ == '__main__':
                         action='store_true',
                         help='Switch to the previous window',
                         default=False)
+    parser.add_argument('--window',
+                        nargs=1,
+                        dest='window',
+                        help='Switch to window or the previous',
+                        default=False)
     args = parser.parse_args()
 
-    if not args.switch:
+    print(args)
+    if not args.switch and not args.window:
         focus_watcher = FocusWatcher()
         focus_watcher.run()
-    else:
+    elif args.switch:
         client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         client_socket.connect(SOCKET_FILE)
         client_socket.send(b'switch')
+        client_socket.close()
+    elif args.window:
+        client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client_socket.connect(SOCKET_FILE)
+        client_socket.send(args.window[0].encode())
         client_socket.close()
