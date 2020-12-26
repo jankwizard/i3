@@ -32,6 +32,17 @@ class FocusWatcher:
         self.workspace = "1"
         self.window_list_lock = threading.RLock()
 
+    def swap2prev(self):
+        with self.window_list_lock:
+            tree = self.i3.get_tree()
+            windows = set(w.id for w in tree.leaves())
+            for window_id in self.window_list[1:]:
+                if window_id not in windows:
+                    self.window_list.remove(window_id)
+                else:
+                    self.i3.command('[con_id=%s] focus' % window_id)
+                    subprocess.call("xrefresh", shell=True)
+                    break
 # TODO:
 # currently this works by pushing to the top of a 15 entry window id stack
 # every time you focus a new window (if the window id is already in the stack
@@ -77,28 +88,10 @@ class FocusWatcher:
             data = conn.recv(1024)
             print(data)
             if data == b'switch':
-                with self.window_list_lock:
-                    tree = self.i3.get_tree()
-                    windows = set(w.id for w in tree.leaves())
-                    for window_id in self.window_list[1:]:
-                        if window_id not in windows:
-                            self.window_list.remove(window_id)
-                        else:
-                            self.i3.command('[con_id=%s] focus' % window_id)
-                            subprocess.call("xrefresh", shell=True)
-                            break
+                self.swap2prev()
             elif data:
                 if self.workspace.startswith(data.decode()):
-                    with self.window_list_lock:
-                        tree = self.i3.get_tree()
-                        windows = set(w.id for w in tree.leaves())
-                        for window_id in self.window_list[1:]:
-                            if window_id not in windows:
-                                self.window_list.remove(window_id)
-                            else:
-                                self.i3.command('[con_id=%s] focus' % window_id)
-                                subprocess.call("xrefresh", shell=True)
-                                break
+                    self.swap2prev()
                 else:
                     self.i3.command('workspace number ' + data.decode())
                 pass
