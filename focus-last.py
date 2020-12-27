@@ -30,11 +30,27 @@ class FocusWatcher:
         self.listening_socket.listen(1)
         tree = self.i3.get_tree()
         focused = tree.find_focused()
+        self.zoom = False
         self.workspace = focused.workspace().name
         self.window = focused
+        self.rect = focused.rect
         self.prev_workspace = self.workspace
         self.prev_window = self.window
         print(f"Init - ws:{self.workspace}, con:{self.window.id}")
+
+    def togglezoom(self):
+        print("toogle zoom")
+        if not self.zoom:
+            print('resize set width 3198')
+            print('resize set height 1720')
+            self.i3.command('resize set width 3198')  # windows require min 2px?
+            self.i3.command('resize set height 1720') # height - i3bar - decor?
+        else:
+            print('resize set width ' + str(self.rect.width))
+            print('resize set height ' + str(self.rect.height))
+            self.i3.command('resize set width ' + str(self.rect.width))
+            self.i3.command('resize set height ' + str(self.rect.height))
+        self.zoom = not self.zoom
 
     def swap2prev(self):
         if self.prev_window != None:
@@ -56,7 +72,8 @@ class FocusWatcher:
     def on_window_focus(self, i3conn, event):
         # update current focused window
         print(f"\tcon: class:{event.container.window_class}, id:{event.container.id}")
-        window = event.container
+        self.window = event.container
+        self.rect = self.window.rect
 
     def launch_i3(self):
         self.i3.main()
@@ -71,7 +88,9 @@ class FocusWatcher:
         def read(conn):
             data = conn.recv(1024)
             print("\nSwitch:" + data.decode())
-            if data == b'switch':
+            if data == b'zoom':
+                self.togglezoom()
+            elif data == b'switch':
                 self.swap2prev()
             elif data:
                 if self.workspace.startswith(data.decode()):
@@ -112,6 +131,11 @@ if __name__ == '__main__':
                         action='store_true',
                         help='Switch to the previous window',
                         default=False)
+    parser.add_argument('--zoom',
+                        dest='zoom',
+                        action='store_true',
+                        help='toggle Zoom on container',
+                        default=False)
     parser.add_argument('--window',
                         nargs=1,
                         dest='window',
@@ -119,11 +143,7 @@ if __name__ == '__main__':
                         default=False)
     args = parser.parse_args()
 
-    print(args)
-    if not args.switch and not args.window:
-        focus_watcher = FocusWatcher()
-        focus_watcher.run()
-    elif args.switch:
+    if args.switch:
         client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         client_socket.connect(SOCKET_FILE)
         client_socket.send(b'switch')
@@ -133,3 +153,12 @@ if __name__ == '__main__':
         client_socket.connect(SOCKET_FILE)
         client_socket.send(args.window[0].encode())
         client_socket.close()
+    elif args.zoom:
+        print("z?")
+        client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client_socket.connect(SOCKET_FILE)
+        client_socket.send(b'zoom')
+        client_socket.close()
+    else:
+        focus_watcher = FocusWatcher()
+        focus_watcher.run()
