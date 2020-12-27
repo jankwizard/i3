@@ -38,20 +38,29 @@ class FocusWatcher:
         self.prev_window = self.window
         print(f"Init - ws:{self.workspace}, con:{self.window.id}")
 
+    def zoomdimension(self, d_name, d_val):
+        rc = False
+        while not rc:
+            reply = self.i3.command('resize set ' + d_name + ' ' + str(d_val))[0]
+            if reply.success or reply.error.startswith("Failed to find app"):
+                break;
+            else:
+                rc = False
+                d_val = d_val - 1
+        print('\tresize set '+d_name+' '+str(d_val))
+
     def togglezoom(self):
-        print("toogle zoom")
+        print(f"Zoom: {self.zoom} -> {not self.zoom}")
         if not self.zoom:
-            print('resize set width 3198')
-            print('resize set height 1720')
-            self.i3.command('resize set width 3198')  # windows require min 2px?
-            self.i3.command('resize set height 1720') # height - i3bar - decor?
+            # default dimensions (maximum zoomage)
+            self.zoomdimension("width", 3197)
+            self.zoomdimension("height", 1722)
         else:
-            print('resize set width ' + str(self.rect.width))
-            print('resize set height ' + str(self.rect.height))
+            print('\tresize set width ' + str(self.rect.width))
+            print('\tresize set height ' + str(self.rect.height))
             self.i3.command('resize set width ' + str(self.rect.width))
             self.i3.command('resize set height ' + str(self.rect.height))
         self.zoom = not self.zoom
-        print(f"Zoom: {self.zoom}")
 
     def swap2prev(self):
         if self.prev_window != None:
