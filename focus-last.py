@@ -51,6 +51,7 @@ class FocusWatcher:
             self.i3.command('resize set width ' + str(self.rect.width))
             self.i3.command('resize set height ' + str(self.rect.height))
         self.zoom = not self.zoom
+        print(f"Zoom: {self.zoom}")
 
     def swap2prev(self):
         if self.prev_window != None:
@@ -73,7 +74,8 @@ class FocusWatcher:
         # update current focused window
         print(f"\tcon: class:{event.container.window_class}, id:{event.container.id}")
         self.window = event.container
-        self.rect = self.window.rect
+        if not self.zoom:
+            self.rect = self.window.rect
 
     def launch_i3(self):
         self.i3.main()
