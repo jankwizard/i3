@@ -36,6 +36,18 @@ class FocusWatcher:
         self.rect = focused.rect
         self.prev_workspace = self.workspace
         self.prev_window = self.window
+        # default max zoom
+        self.x = 3197
+        self.y = 1722
+        try:
+            res_x = int(subprocess.check_output("xrandr | grep '*' | sed -E 's| *([0-9]*)x([0-9]*).*|\\1|g'", shell=True).decode())
+            res_y = int(subprocess.check_output("xrandr | grep '*' | sed -E 's| *([0-9]*)x([0-9]*).*|\\2|g'", shell=True).decode())
+            if res_x < self.x:
+                self.x = res_x
+            if res_y < self.y:
+                self.y = res_y
+        except:
+            print("ERR: COULDN'T GET RESOLUTION >:(")
         print(f"Init - ws:{self.workspace}, con:{self.window.id}")
 
     def zoomdimension(self, d_name, d_val):
@@ -53,8 +65,8 @@ class FocusWatcher:
         print(f"Zoom: {self.zoom} -> {not self.zoom}")
         if not self.zoom:
             # default dimensions (maximum zoomage)
-            self.zoomdimension("width", 3197)
-            self.zoomdimension("height", 1722)
+            self.zoomdimension("width", self.x)
+            self.zoomdimension("height", self.y)
         else:
             print('\tresize set width ' + str(self.rect.width))
             print('\tresize set height ' + str(self.rect.height))
