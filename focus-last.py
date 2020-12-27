@@ -19,6 +19,7 @@ class FocusWatcher:
     def __init__(self):
         self.i3 = i3ipc.Connection()
         self.i3.on('window::focus', self.on_window_focus)
+        self.i3.on('workspace::focus', self.on_workspace_focus)
         # Make a directory with permissions that restrict access to
         # the user only.
         os.makedirs(SOCKET_DIR, mode=0o700, exist_ok=True)
@@ -27,52 +28,35 @@ class FocusWatcher:
             os.remove(SOCKET_FILE)
         self.listening_socket.bind(SOCKET_FILE)
         self.listening_socket.listen(1)
-        self.window_list = []
-        self.workspace_old = "1"
-        self.workspace = "1"
-        self.window_list_lock = threading.RLock()
+        tree = self.i3.get_tree()
+        focused = tree.find_focused()
+        self.workspace = focused.workspace().name
+        self.window = focused
+        self.prev_workspace = self.workspace
+        self.prev_window = self.window
+        print(f"Init - ws:{self.workspace}, con:{self.window.id}")
 
     def swap2prev(self):
-        with self.window_list_lock:
-            tree = self.i3.get_tree()
-            windows = set(w.id for w in tree.leaves())
-            for window_id in self.window_list[1:]:
-                if window_id not in windows:
-                    self.window_list.remove(window_id)
-                else:
-                    self.i3.command('[con_id=%s] focus' % window_id)
-                    subprocess.call("xrefresh", shell=True)
-                    break
-# TODO:
-# currently this works by pushing to the top of a 15 entry window id stack
-# every time you focus a new window (if the window id is already in the stack
-# it's first deleted).
-# if I ignore this silly history tree (only useful for delted windows?)
-# then I can just say:
-# if event.container.workspace == prev_workspace
-#   replace the window_list[0]
-# else (new workspace)
-#   insert into window_list
+        if self.prev_window != None:
+            self.i3.command('[con_id=%s] focus' % self.prev_window.id)
+            subprocess.call("xrefresh", shell=True)
+
+    def on_workspace_focus(self, i3conn, event):
+        # remember prev window+workspace
+        self.prev_window    = self.window
+        self.prev_workspace = self.workspace
+        # track new window+workspace
+        self.workspace = event.current.name
+        self.window = event.current.find_focused()
+        print(f"\nnew workspace: {self.workspace}")
+        if self.prev_window == None:
+            print(f"( prev ws:{self.prev_workspace}, con:None")
+        else:
+            print(f"( prev ws:{self.prev_workspace}, con:{self.prev_window.id}")
     def on_window_focus(self, i3conn, event):
-        with self.window_list_lock:
-            window_id = event.container.id
-            new_workspace = i3conn.get_tree().find_focused().workspace().name
-            print("")
-            print("new" + new_workspace)
-            print("old:" + self.workspace)
-            if new_workspace == self.workspace:
-                if len(self.window_list) > 0:
-                    # workspace hasn't changed, just replace prev win id
-                    self.window_list[0] = window_id
-            else:
-                # workspace has changed! insert window id instead
-                self.workspace_old = self.workspace
-                self.workspace = new_workspace
-                self.window_list.insert(0, window_id)
-            if len(self.window_list) > 1:
-                print("prev_id:" + str(self.window_list[1]))
-            if len(self.window_list) > MAX_WIN_HISTORY:
-                del self.window_list[MAX_WIN_HISTORY:]
+        # update current focused window
+        print(f"\tcon: class:{event.container.window_class}, id:{event.container.id}")
+        window = event.container
 
     def launch_i3(self):
         self.i3.main()
@@ -86,7 +70,7 @@ class FocusWatcher:
 
         def read(conn):
             data = conn.recv(1024)
-            print(data)
+            print("\nSwitch:" + data.decode())
             if data == b'switch':
                 self.swap2prev()
             elif data:
