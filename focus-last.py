@@ -31,6 +31,7 @@ class FocusWatcher:
         tree = self.i3.get_tree()
         focused = tree.find_focused()
         self.zoom = False
+        self.max = False
         self.workspace = focused.workspace().name
         self.window = focused
         self.rect = focused.rect
@@ -49,6 +50,36 @@ class FocusWatcher:
         except:
             print("ERR: COULDN'T GET RESOLUTION >:(")
         print(f"Init - ws:{self.workspace}, con:{self.window.id}")
+
+    def togglemax(self):
+        # use an empty marked window as a placeholder for getting the floating
+        # window back where it started
+        if not self.max:
+            print("maximise")
+            #self.i3.command('[con_id=%s] mark --add zoom' % self.window.id)
+            #self.i3.command('[con_mark="placeholder"] open; mark placeholder')
+            #self.i3.command('[con_mark="zoom"] floating toggle')
+            #self.i3.command('[con_mark="zoom"] border none')
+            #self.i3.command('[con_mark="zoom"] move position 0 0')
+            #self.i3.command('[con_mark="zoom"] resize set 3200 1736')
+            #self.i3.command('[con_mark="zoom"] focus')
+            self.i3.command('[con_id=%s] mark --add zoom;' \
+                '[con_mark="placeholder"] open; mark placeholder;' \
+                '[con_mark="zoom"] floating toggle;' \
+                '[con_mark="zoom"] border none;' \
+                '[con_mark="zoom"] move position 0 0;' \
+                '[con_mark="zoom"] resize set 3200 1757;' \
+                '[con_mark="zoom"] focus;' \
+                    % self.window.id)
+        else:
+            print("unmaximise")
+            self.i3.command('[con_mark="placeholder"] focus;' \
+                '[con_mark="zoom"] floating toggle;' \
+                '[con_mark="zoom"] border normal;' \
+                '[con_mark="zoom"] focus;' \
+                '[con_mark="placeholder"] kill;' \
+                '[con_mark="zoom"] unmark;')
+        self.max = not self.max
 
     def zoomdimension(self, d_name, d_val):
         rc = False
@@ -111,6 +142,8 @@ class FocusWatcher:
         def read(conn):
             data = conn.recv(1024)
             print("\nSwitch:" + data.decode())
+            if data == b'max':
+                self.togglemax()
             if data == b'zoom':
                 self.togglezoom()
             elif data == b'switch':
@@ -154,6 +187,11 @@ if __name__ == '__main__':
                         action='store_true',
                         help='Switch to the previous window',
                         default=False)
+    parser.add_argument('--max',
+                        dest='max',
+                        action='store_true',
+                        help='toggle Max on container',
+                        default=False)
     parser.add_argument('--zoom',
                         dest='zoom',
                         action='store_true',
@@ -177,10 +215,14 @@ if __name__ == '__main__':
         client_socket.send(args.window[0].encode())
         client_socket.close()
     elif args.zoom:
-        print("z?")
         client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         client_socket.connect(SOCKET_FILE)
         client_socket.send(b'zoom')
+        client_socket.close()
+    elif args.max:
+        client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client_socket.connect(SOCKET_FILE)
+        client_socket.send(b'max')
         client_socket.close()
     else:
         focus_watcher = FocusWatcher()
