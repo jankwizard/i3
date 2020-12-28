@@ -29,25 +29,26 @@ class FocusWatcher:
         self.window_height = self.window.rect.height
         self.max = False
 
-    def get_window_dimensions(self):
-        self.window = self.i3.get_tree().find_focused()
-        self.window_width = self.window.rect.width
-        self.window_height = self.window.rect.height
-
     def togglemax(self):
         # use an empty marked window as a placeholder for getting the floating
         # window back where it started
         if not self.max:
-            #TODO: get dimensions asyncronously
-            self.get_window_dimensions()
-            self.i3.command('[con_id={0}] mark --add zoom;' \
-                '[con_mark="placeholder"] open; mark placeholder;' \
-                '[con_mark="zoom"] floating toggle;' \
-                '[con_mark="zoom"] border none;' \
-                '[con_mark="zoom"] resize set 100 ppt 100 ppt;' \
-                '[con_mark="zoom"] move position 0 0;' \
-                '[con_mark="zoom"] focus;'.format(self.window.id))
-            print("maximise")
+            self.window = self.i3.get_tree().find_focused()
+            self.window_width = self.window.rect.width
+            self.window_height = self.window.rect.height
+            if self.window.fullscreen_mode == 0:
+                self.i3.command('[con_id={0}] mark --add zoom;' \
+                    '[con_mark="placeholder"] open; mark placeholder;' \
+                    '[con_mark="zoom"] floating toggle;' \
+                    '[con_mark="zoom"] border none;' \
+                    '[con_mark="zoom"] resize set 100 ppt 100 ppt;' \
+                    '[con_mark="zoom"] move position 0 0;' \
+                    '[con_mark="zoom"] focus;'.format(self.window.id))
+                print("maximise")
+                self.max = not self.max
+            else:
+                self.i3.command('fullscreen toggle')
+                print("native de-fullscreen")
         else:
             self.i3.command('[con_mark="placeholder"] focus;' \
                 '[con_mark="zoom"] floating toggle;' \
@@ -58,7 +59,7 @@ class FocusWatcher:
                 '[con_mark="zoom"] unmark;'.format( \
                 self.window_width, self.window_height))
             print("unmaximise")
-        self.max = not self.max
+            self.max = not self.max
 
     def launch_i3(self):
         self.i3.main()
