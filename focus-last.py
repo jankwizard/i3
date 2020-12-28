@@ -40,15 +40,14 @@ class FocusWatcher:
         # default max zoom
         self.x = 3197
         self.y = 1722
-        try:
-            res_x = int(subprocess.check_output("xrandr | grep '*' | sed -E 's| *([0-9]*)x([0-9]*).*|\\1|g'", shell=True).decode())
-            res_y = int(subprocess.check_output("xrandr | grep '*' | sed -E 's| *([0-9]*)x([0-9]*).*|\\2|g'", shell=True).decode())
-            if res_x < self.x:
-                self.x = res_x
-            if res_y < self.y:
-                self.y = res_y
-        except:
-            print("ERR: COULDN'T GET RESOLUTION >:(")
+        self.res_x = int(subprocess.check_output("xrandr | grep '*' | sed -E 's| *([0-9]*)x([0-9]*).*|\\1|g'", shell=True).decode())
+        self.res_y = int(subprocess.check_output("xrandr | grep '*' | sed -E 's| *([0-9]*)x([0-9]*).*|\\2|g'", shell=True).decode())
+        print(str(self.res_x))
+        print(str(self.res_y))
+        if self.res_x < self.x:
+            self.x = self.res_x
+        if self.res_y < self.y:
+            self.y = self.res_y
         print(f"Init - ws:{self.workspace}, con:{self.window.id}")
 
     def togglemax(self):
@@ -56,21 +55,16 @@ class FocusWatcher:
         # window back where it started
         if not self.max:
             print("maximise")
-            #self.i3.command('[con_id=%s] mark --add zoom' % self.window.id)
-            #self.i3.command('[con_mark="placeholder"] open; mark placeholder')
-            #self.i3.command('[con_mark="zoom"] floating toggle')
-            #self.i3.command('[con_mark="zoom"] border none')
-            #self.i3.command('[con_mark="zoom"] move position 0 0')
-            #self.i3.command('[con_mark="zoom"] resize set 3200 1736')
-            #self.i3.command('[con_mark="zoom"] focus')
-            self.i3.command('[con_id=%s] mark --add zoom;' \
+            self.i3.command('[con_id={0}] mark --add zoom;' \
                 '[con_mark="placeholder"] open; mark placeholder;' \
                 '[con_mark="zoom"] floating toggle;' \
                 '[con_mark="zoom"] border none;' \
                 '[con_mark="zoom"] move position 0 0;' \
-                '[con_mark="zoom"] resize set 3200 1757;' \
-                '[con_mark="zoom"] focus;' \
-                    % self.window.id)
+                '[con_mark="zoom"] resize set {1} {2};' \
+                '[con_mark="zoom"] focus;'.format( \
+                    self.window.id, \
+                    self.res_x, \
+                    self.res_y))
         else:
             print("unmaximise")
             self.i3.command('[con_mark="placeholder"] focus;' \
@@ -142,6 +136,12 @@ class FocusWatcher:
         def read(conn):
             data = conn.recv(1024)
             print("\nSwitch:" + data.decode())
+            if data == b'maxon':
+                if not self.max:
+                    self.togglemax()
+            if data == b'maxoff':
+                if self.max:
+                    self.togglemax()
             if data == b'max':
                 self.togglemax()
             if data == b'zoom':
@@ -187,6 +187,16 @@ if __name__ == '__main__':
                         action='store_true',
                         help='Switch to the previous window',
                         default=False)
+    parser.add_argument('--maxoff',
+                        dest='maxoff',
+                        action='store_true',
+                        help='un-Max container',
+                        default=False)
+    parser.add_argument('--maxon',
+                        dest='maxon',
+                        action='store_true',
+                        help='Max container',
+                        default=False)
     parser.add_argument('--max',
                         dest='max',
                         action='store_true',
@@ -223,6 +233,16 @@ if __name__ == '__main__':
         client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         client_socket.connect(SOCKET_FILE)
         client_socket.send(b'max')
+        client_socket.close()
+    elif args.maxon:
+        client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client_socket.connect(SOCKET_FILE)
+        client_socket.send(b'maxon')
+        client_socket.close()
+    elif args.maxoff:
+        client_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client_socket.connect(SOCKET_FILE)
+        client_socket.send(b'maxoff')
         client_socket.close()
     else:
         focus_watcher = FocusWatcher()
