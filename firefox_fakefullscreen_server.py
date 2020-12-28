@@ -12,7 +12,7 @@ import os
 import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-os.chdir(".")
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
