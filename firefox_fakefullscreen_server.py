@@ -21,9 +21,9 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
         if self.path == "/maxoff":
-            subprocess.check_output("python3 focus-last.py --maxoff", shell=True)
+            subprocess.check_output("python3 fakefullscreen.py --maxoff", shell=True)
         elif self.path == "/maxon":
-            subprocess.check_output("python3 focus-last.py --maxon", shell=True)
+            subprocess.check_output("python3 fakefullscreen.py --maxon", shell=True)
 
 
 httpd = HTTPServer(('localhost', 8000), SimpleHTTPRequestHandler)
