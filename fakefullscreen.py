@@ -7,18 +7,15 @@ import tempfile
 import threading
 from argparse import ArgumentParser
 import i3ipc
-import subprocess
 
 SOCKET_DIR = '{}/i3_fakefullscreen.{}{}'.format(tempfile.gettempdir(), os.geteuid(),
                                             os.getenv("DISPLAY"))
 SOCKET_FILE = '{}/socket'.format(SOCKET_DIR)
-MAX_WIN_HISTORY = 15
 
 
 class FocusWatcher:
     def __init__(self):
         self.i3 = i3ipc.Connection()
-        self.i3.on('window::focus', self.on_window_focus)
         # Make a directory with permissions that restrict access to
         # the user only.
         os.makedirs(SOCKET_DIR, mode=0o700, exist_ok=True)
@@ -28,39 +25,40 @@ class FocusWatcher:
         self.listening_socket.bind(SOCKET_FILE)
         self.listening_socket.listen(1)
         self.window = self.i3.get_tree().find_focused()
+        self.window_width = self.window.rect.width
+        self.window_height = self.window.rect.height
         self.max = False
-        self.res_x = int(subprocess.check_output("xrandr | grep '*' | sed -E 's| *([0-9]*)x([0-9]*).*|\\1|g'", shell=True).decode())
-        self.res_y = int(subprocess.check_output("xrandr | grep '*' | sed -E 's| *([0-9]*)x([0-9]*).*|\\2|g'", shell=True).decode())
-        print("Init - detected resolution: {0}x{1}".format( self.res_x, self.res_y))
+
+    def get_window_dimensions(self):
+        self.window = self.i3.get_tree().find_focused()
+        self.window_width = self.window.rect.width
+        self.window_height = self.window.rect.height
 
     def togglemax(self):
         # use an empty marked window as a placeholder for getting the floating
         # window back where it started
         if not self.max:
-            print("maximise")
+            #TODO: get dimensions asyncronously
+            self.get_window_dimensions()
             self.i3.command('[con_id={0}] mark --add zoom;' \
                 '[con_mark="placeholder"] open; mark placeholder;' \
                 '[con_mark="zoom"] floating toggle;' \
                 '[con_mark="zoom"] border none;' \
+                '[con_mark="zoom"] resize set 100 ppt 100 ppt;' \
                 '[con_mark="zoom"] move position 0 0;' \
-                '[con_mark="zoom"] resize set {1} {2};' \
-                '[con_mark="zoom"] focus;'.format( \
-                    self.window.id, \
-                    self.res_x, \
-                    self.res_y))
+                '[con_mark="zoom"] focus;'.format(self.window.id))
+            print("maximise")
         else:
-            print("unmaximise")
             self.i3.command('[con_mark="placeholder"] focus;' \
                 '[con_mark="zoom"] floating toggle;' \
                 '[con_mark="zoom"] border normal;' \
                 '[con_mark="zoom"] focus;' \
                 '[con_mark="placeholder"] kill;' \
-                '[con_mark="zoom"] unmark;')
+                '[con_mark="zoom"] resize set {0} {1};'
+                '[con_mark="zoom"] unmark;'.format( \
+                self.window_width, self.window_height))
+            print("unmaximise")
         self.max = not self.max
-
-    def on_window_focus(self, i3conn, event):
-        # update current focused window
-        self.window = event.container
 
     def launch_i3(self):
         self.i3.main()
