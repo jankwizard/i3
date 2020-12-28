@@ -7,6 +7,11 @@
 # to disable normal fullscreen, and fake fullscreen enabled via a client/hook
 # in firefox pages (firefox_fakefullscreen_client.js)
 ##################
+# Issues:
+# - for "fullscreen" window in stacked/tabbed container, changing focus to
+#   sibling windows causes "fullscreen" to end
+# - "fullscreen" ending in one firefox window will also end fullscreen in all
+#   other windows
 
 import os
 import subprocess

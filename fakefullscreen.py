@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+#######################
+# Issues:
+# - some applications oversize when set to 100%/full screen size in pixels
+#   gnome-terminal and emacs lose ~20 pixels at the bottom of the screen
+#   firefox, chrome and xterm seem to be fine
+#   it may be an .Xresources/scaling issue, unsure... seems like an i3 bug
+# - if you kill the fakefullscreened window, you'll see the placeholder window
 
 import os
 import socket
