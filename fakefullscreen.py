@@ -5,6 +5,8 @@
 #   gnome-terminal and emacs lose ~20 pixels at the bottom of the screen
 #   firefox, chrome and xterm seem to be fine
 #   it may be an .Xresources/scaling issue, unsure... seems like an i3 bug
+#   so... only do this for firefox, since that's the only application that
+#   benefits right now
 # - if you kill the fakefullscreened window, you'll see the placeholder window
 
 import os
@@ -43,7 +45,7 @@ class FocusWatcher:
             self.window = self.i3.get_tree().find_focused()
             self.window_width = self.window.rect.width
             self.window_height = self.window.rect.height
-            if self.window.fullscreen_mode == 0:
+            if self.window.fullscreen_mode == 0 and self.window.window_class == "Firefox":
                 self.i3.command('[con_id={0}] mark --add zoom;' \
                     '[con_mark="placeholder"] open; mark placeholder;' \
                     '[con_mark="zoom"] floating toggle;' \
@@ -55,7 +57,7 @@ class FocusWatcher:
                 self.max = not self.max
             else:
                 self.i3.command('fullscreen toggle')
-                print("native de-fullscreen")
+                print("native fullscreen toggle")
         else:
             self.i3.command('[con_mark="placeholder"] focus;' \
                 '[con_mark="zoom"] floating toggle;' \
