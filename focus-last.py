@@ -78,7 +78,7 @@ class FocusWatcher:
                     self.swap2prev()
                 else:
                     self.i3.command('workspace number ' + data.decode())
-                pass
+                    subprocess.call("xrefresh", shell=True)
             elif not data:
                 selector.unregister(conn)
                 conn.close()
