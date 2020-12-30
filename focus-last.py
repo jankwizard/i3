@@ -7,7 +7,6 @@ import tempfile
 import threading
 from argparse import ArgumentParser
 import i3ipc
-import subprocess
 
 SOCKET_DIR = '{}/i3_focus_last.{}{}'.format(tempfile.gettempdir(), os.geteuid(),
                                             os.getenv("DISPLAY"))
@@ -39,7 +38,6 @@ class FocusWatcher:
     def swap2prev(self):
         if self.prev_window != None:
             self.i3.command('[con_id=%s] focus' % self.prev_window.id)
-            subprocess.call("xrefresh", shell=True)
 
     def on_workspace_focus(self, i3conn, event):
         # remember prev window+workspace
@@ -78,7 +76,6 @@ class FocusWatcher:
                     self.swap2prev()
                 else:
                     self.i3.command('workspace number ' + data.decode())
-                    subprocess.call("xrefresh", shell=True)
             elif not data:
                 selector.unregister(conn)
                 conn.close()
